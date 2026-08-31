@@ -1,5 +1,3 @@
-![](pmpro-razorpay-banner.png)
-
 # [Paid Memberships Pro - Razorpay Gateway](https://www.paidmembershipspro.com/add-ons/razorpay/) #
 
 ![License](https://img.shields.io/badge/license-GPL--3.0%2B-red.svg?style=flat-square)
