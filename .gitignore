@@ -1,0 +1,11 @@
+node_modules/
+vendor/
+logs/
+*.log
+dist/
+build/
+.opencode/
+.env
+.env.*
+!.env.example
+.DS_Store

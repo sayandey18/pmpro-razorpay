@@ -1,0 +1,356 @@
+# Copyright (C) 2026 Sayan Dey
+# This file is distributed under the GPL-3.0+.
+msgid ""
+msgstr ""
+"Project-Id-Version: Paid Memberships Pro - Razorpay Gateway 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/pmpro-razorpay\n"
+"Last-Translator: Sayan Dey <mr.sayandey18@outlook.com>\n"
+"Language-Team: Sayan Dey <mr.sayandey18@outlook.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-08-31T08:36:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: pmpro-razorpay\n"
+
+#. Plugin Name of the plugin
+#: pmpro-razorpay.php
+msgid "Paid Memberships Pro - Razorpay Gateway"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: pmpro-razorpay.php
+msgid "https://www.paidmembershipspro.com/add-ons/razorpay"
+msgstr ""
+
+#. Description of the plugin
+#: pmpro-razorpay.php
+msgid "PMPro Gateway integration for Razorpay"
+msgstr ""
+
+#. Author of the plugin
+#: pmpro-razorpay.php
+msgid "Sayan Dey"
+msgstr ""
+
+#. Author URI of the plugin
+#: pmpro-razorpay.php
+msgid "https://github.com/sayandey18"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:69
+msgid "Razorpay"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:167
+msgid "Razorpay (Live)"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:183
+msgid "Razorpay (Test)"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:199
+msgid "Razorpay Webhook"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:207
+msgid "Webhook URL"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:210
+msgid "Integrate with Razorpay, be sure to use the following for your Webhook URL"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:231
+#: classes/class.pmprogateway_razorpay.php:302
+#: classes/class.pmprogateway_razorpay.php:338
+msgid "Key ID"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:232
+#: classes/class.pmprogateway_razorpay.php:312
+#: classes/class.pmprogateway_razorpay.php:348
+msgid "Key Secret"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:233
+#: classes/class.pmprogateway_razorpay.php:322
+#: classes/class.pmprogateway_razorpay.php:358
+msgid "Webhook Secret"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:246
+#, php-format
+msgid "Enter the %1$s from your Razorpay Dashboard."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:283
+msgid "Razorpay is a leading Indian payment gateway that lets you accept UPI Autopay and credit/debit card subscription payments on your membership site."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:296
+msgid "Razorpay Settings"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:306
+#: classes/class.pmprogateway_razorpay.php:342
+msgid "Enter the Key ID from your Razorpay Dashboard."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:316
+#: classes/class.pmprogateway_razorpay.php:352
+msgid "Enter the Key Secret from your Razorpay Dashboard."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:326
+#: classes/class.pmprogateway_razorpay.php:362
+msgid "Enter the Webhook Secret from your Razorpay Dashboard."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:332
+msgid "Sandbox/Testing Keys"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:368
+msgid "Razorpay Webhook URL"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:371
+msgid "To fully integrate with Razorpay, be sure to use the following for your Webhook URL"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:406
+msgid "Pay with Razorpay"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:406
+msgid "Submit and Confirm"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:560
+msgid "Could not find the user for this checkout."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:601
+msgid "No customer id returned from Razorpay."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:621
+#, php-format
+msgid "Error creating Razorpay customer: %s"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:668
+#, php-format
+msgid "Error creating Razorpay plan: %s"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:726
+msgid "Setup Fee"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:757
+#, php-format
+msgid "Error creating Razorpay subscription: %s"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:773
+#, php-format
+msgid "Error creating Razorpay order: %s"
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:885
+#, php-format
+msgid "Error cancelling subscription %s at Razorpay."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:940
+msgid "Subscription transaction ID is missing."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:951
+msgid "No subscription returned from Razorpay."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay.php:1017
+msgid "Admin: There was a problem processing the refund."
+msgstr ""
+
+#: classes/class.pmprogateway_razorpay_api.php:191
+msgid "Razorpay API request failed."
+msgstr ""
+
+#: pmpro-razorpay.php:64
+#, php-format
+msgid "Thank you for activating the Paid Memberships Pro: Razorpay Add On. <a href=\"%s\">Visit the payment settings page</a> to configure the Razorpay Payment Gateway."
+msgstr ""
+
+#. translators: 1: Opening link tag, 2: Closing link tag.
+#: pmpro-razorpay.php:94
+#, php-format
+msgid "The Paid Memberships Pro - Razorpay Gateway Add On requires the Paid Memberships Pro plugin to be installed and activated. %1$sInstall or activate Paid Memberships Pro%2$s."
+msgstr ""
+
+#: pmpro-razorpay.php:115
+msgid "Configure Razorpay"
+msgstr ""
+
+#: pmpro-razorpay.php:132
+msgid "View Documentation"
+msgstr ""
+
+#: pmpro-razorpay.php:132
+msgid "Docs"
+msgstr ""
+
+#: pmpro-razorpay.php:133
+msgid "Visit Customer Support Forum"
+msgstr ""
+
+#: pmpro-razorpay.php:133
+msgid "Support"
+msgstr ""
+
+#: webhook.php:36
+msgid "Razorpay webhook secret not configured."
+msgstr ""
+
+#: webhook.php:43
+msgid "Razorpay webhook signature verification failed."
+msgstr ""
+
+#: webhook.php:52
+msgid "Razorpay webhook contained no event data."
+msgstr ""
+
+#: webhook.php:102
+#, php-format
+msgid "Subscription %1$s for subscription # (%2$s). No PMPro state change."
+msgstr ""
+
+#: webhook.php:212
+msgid "No subscription id found in subscription.authenticated event."
+msgstr ""
+
+#: webhook.php:219
+#: webhook.php:264
+#, php-format
+msgid "Couldn't find the order for subscription # (%s)."
+msgstr ""
+
+#: webhook.php:257
+msgid "No subscription id found in subscription.activated event."
+msgstr ""
+
+#: webhook.php:410
+msgid "No subscription id found in subscription.charged event."
+msgstr ""
+
+#: webhook.php:416
+#, php-format
+msgid "subscription.charged for subscription # (%1$s) did not carry a captured payment. Ignoring."
+msgstr ""
+
+#: webhook.php:424
+#: webhook.php:485
+#: webhook.php:688
+#, php-format
+msgid "An order with that payment ID (%s) already exists."
+msgstr ""
+
+#: webhook.php:432
+#: webhook.php:494
+#, php-format
+msgid "Couldn't find the original subscription: (%s)."
+msgstr ""
+
+#: webhook.php:477
+msgid "Missing subscription or payment id for renewal."
+msgstr ""
+
+#: webhook.php:503
+#: webhook.php:580
+#, php-format
+msgid "Couldn't find the old order's user. Order ID (%s)."
+msgstr ""
+
+#: webhook.php:539
+#, php-format
+msgid "Order created (%1$s) for subscription # (%2$s)."
+msgstr ""
+
+#: webhook.php:572
+msgid "Couldn't find the original order for this failed payment."
+msgstr ""
+
+#: webhook.php:602
+#, php-format
+msgid "Payment failed: %s."
+msgstr ""
+
+#: webhook.php:604
+msgid "Payment failed."
+msgstr ""
+
+#: webhook.php:617
+#, php-format
+msgid "Payment failed for subscription # (%s)."
+msgstr ""
+
+#: webhook.php:633
+msgid "No payment id found in refund event."
+msgstr ""
+
+#: webhook.php:641
+#, php-format
+msgid "Couldn't find an order with payment id (%s) to refund."
+msgstr ""
+
+#: webhook.php:652
+#, php-format
+msgid "Order # (%1$s) marked refunded for payment (%2$s)."
+msgstr ""
+
+#: webhook.php:654
+#, php-format
+msgid "Partial refund of %1$s processed for payment (%2$s)."
+msgstr ""
+
+#: webhook.php:656
+#, php-format
+msgid "Partial refund of %1$s added as a note to order # (%2$s)."
+msgstr ""
+
+#: webhook.php:674
+msgid "No payment id found in payment.captured event."
+msgstr ""
+
+#: webhook.php:680
+#, php-format
+msgid "payment.captured for payment (%1$s) has status %2$s. Ignoring."
+msgstr ""
+
+#: webhook.php:699
+#, php-format
+msgid "Couldn't find the order for subscription payment (%s)."
+msgstr ""
+
+#: webhook.php:737
+msgid "Couldn't find the order for this captured payment."
+msgstr ""
+
+#: webhook.php:742
+#, php-format
+msgid "Order # (%s) is already complete."
+msgstr ""
+
+#: webhook.php:777
+#, php-format
+msgid "Logged On: %s"
+msgstr ""
+
+#: webhook.php:795
+msgid "Razorpay Webhook Log"
+msgstr ""
