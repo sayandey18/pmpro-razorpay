@@ -1,5 +1,5 @@
 ---
-name: "➕ Feature Request"
+name: "💡 Feature Request"
 about: "Suggest a new feature. We'll consider building it if it receives
   sufficient interest!"
 title: ''
