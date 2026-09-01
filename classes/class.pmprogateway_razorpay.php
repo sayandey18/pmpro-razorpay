@@ -243,7 +243,12 @@ class PMProGateway_Razorpay extends PMProGateway {
 				</th>
 				<td>
 					<input type="<?php echo esc_attr( $type ); ?>" id="<?php echo esc_attr( $field_name ); ?>" name="<?php echo esc_attr( $field_name ); ?>" size="60" value="<?php echo esc_attr( get_option( 'pmpro_' . $field_name ) ); ?>" class="regular-text code" />
-					<br /><small><?php echo esc_html( sprintf( __( 'Enter the %1$s from your Razorpay Dashboard.', 'pmpro-razorpay' ), $label ) ); ?></small>
+					<br /><small>
+						<?php
+						/* translators: %1$s: Razorpay field label (e.g. Key ID, Key Secret, Webhook Secret). */
+						echo esc_html( sprintf( __( 'Enter the %1$s from your Razorpay Dashboard.', 'pmpro-razorpay' ), $label ) );
+						?>
+					</small>
 				</td>
 			</tr>
 			<?php
@@ -256,6 +261,10 @@ class PMProGateway_Razorpay extends PMProGateway {
 	 * @since 1.0.0
 	 */
 	public static function save_settings_fields() {
+		if ( ! isset( $_REQUEST['pmpro_paymentsettings_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_REQUEST['pmpro_paymentsettings_nonce'] ), 'savesettings' ) ) {
+			return;
+		}
+
 		$settings_to_save = array(
 			'razorpay_key_id',
 			'razorpay_key_secret',
@@ -267,7 +276,7 @@ class PMProGateway_Razorpay extends PMProGateway {
 
 		foreach ( $settings_to_save as $setting ) {
 			if ( isset( $_REQUEST[ $setting ] ) ) {
-				update_option( 'pmpro_' . $setting, sanitize_text_field( $_REQUEST[ $setting ] ) );
+				update_option( 'pmpro_' . $setting, sanitize_text_field( wp_unslash( $_REQUEST[ $setting ] ) ) );
 			}
 		}
 	}
@@ -671,10 +680,16 @@ class PMProGateway_Razorpay extends PMProGateway {
 		// Ensure a Razorpay customer exists for this user (create + store + reuse).
 		$customer_id = self::get_or_create_razorpay_customer( $order );
 		if ( is_wp_error( $customer_id ) ) {
-			$order->notes = trim( $order->notes . ' ' . sprintf( __( 'Error creating Razorpay customer: %s', 'pmpro-razorpay' ), $customer_id->get_error_message() ) );
+			$order->notes = trim(
+				$order->notes . ' ' . sprintf(
+					/* translators: %s: Razorpay error message. */
+					__( 'Error creating Razorpay customer: %s', 'pmpro-razorpay' ),
+					$customer_id->get_error_message()
+				)
+			);
 			$order->saveOrder();
 			pmpro_setMessage( $customer_id->get_error_message(), 'pmpro_error' );
-			wp_redirect( pmpro_url( 'checkout' ) );
+			wp_safe_redirect( pmpro_url( 'checkout' ) );
 			exit;
 		}
 
@@ -694,30 +709,32 @@ class PMProGateway_Razorpay extends PMProGateway {
 
 			$billing_amount_paise = PMProGateway_Razorpay_API::amount_to_paise( $level->billing_amount );
 
-			if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG ) {
-				error_log( sprintf(
-					'[PMPro Razorpay] billing_amount=%s initial_payment=%s subtotal=%s billing_amount_paise=%s currency=%s',
-					$level->billing_amount,
-					$level->initial_payment,
-					$initial_subtotal,
-					$billing_amount_paise,
-					PMProGateway_Razorpay_API::get_currency()
-				) );
-			}
+			PMProGateway_Razorpay_API::debug_log( sprintf(
+				'[PMPro Razorpay] billing_amount=%s initial_payment=%s subtotal=%s billing_amount_paise=%s currency=%s',
+				$level->billing_amount,
+				$level->initial_payment,
+				$initial_subtotal,
+				$billing_amount_paise,
+				PMProGateway_Razorpay_API::get_currency()
+			) );
 
 			$plan_id = self::get_plan_for_level( $level, $period, $interval, $billing_amount_paise, PMProGateway_Razorpay_API::get_currency() );
 
 			if ( is_wp_error( $plan_id ) ) {
-				$order->notes = trim( $order->notes . ' ' . sprintf( __( 'Error creating Razorpay plan: %s', 'pmpro-razorpay' ), $plan_id->get_error_message() ) );
+				$order->notes = trim(
+					$order->notes . ' ' . sprintf(
+						/* translators: %s: Razorpay error message. */
+						__( 'Error creating Razorpay plan: %s', 'pmpro-razorpay' ),
+						$plan_id->get_error_message()
+					)
+				);
 				$order->saveOrder();
 				pmpro_setMessage( $plan_id->get_error_message(), 'pmpro_error' );
-				wp_redirect( pmpro_url( 'checkout' ) );
+				wp_safe_redirect( pmpro_url( 'checkout' ) );
 				exit;
 			}
 
-			if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG ) {
-				error_log( sprintf( '[PMPro Razorpay] using plan id=%s', $plan_id ) );
-			}
+			PMProGateway_Razorpay_API::debug_log( sprintf( '[PMPro Razorpay] using plan id=%s', $plan_id ) );
 
 			// PM Pro's billing_limit is the number of payments after the initial, so
 			// add one to get the total cycles Razorpay should charge. Cap at the
@@ -783,24 +800,28 @@ class PMProGateway_Razorpay extends PMProGateway {
 				}
 			}
 
-			if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG ) {
-				error_log( sprintf(
-					'[PMPro Razorpay] subscription_args order_id=%s combine=%s setup_fee_paise=%s start_at=%s total_count=%s',
-					$order->id,
-					$combine_initial_and_recurring ? 'true' : 'false',
-					$setup_fee_paise,
-					isset( $subscription_args['start_at'] ) ? $subscription_args['start_at'] : '',
-					$total_count
-				) );
-			}
+			PMProGateway_Razorpay_API::debug_log( sprintf(
+				'[PMPro Razorpay] subscription_args order_id=%s combine=%s setup_fee_paise=%s start_at=%s total_count=%s',
+				$order->id,
+				$combine_initial_and_recurring ? 'true' : 'false',
+				$setup_fee_paise,
+				isset( $subscription_args['start_at'] ) ? $subscription_args['start_at'] : '',
+				$total_count
+			) );
 
 			$subscription = $api->create_subscription( $subscription_args );
 
 			if ( is_wp_error( $subscription ) ) {
-				$order->notes = trim( $order->notes . ' ' . sprintf( __( 'Error creating Razorpay subscription: %s', 'pmpro-razorpay' ), $subscription->get_error_message() ) );
+				$order->notes = trim(
+					$order->notes . ' ' . sprintf(
+						/* translators: %s: Razorpay error message. */
+						__( 'Error creating Razorpay subscription: %s', 'pmpro-razorpay' ),
+						$subscription->get_error_message()
+					)
+				);
 				$order->saveOrder();
 				pmpro_setMessage( $subscription->get_error_message(), 'pmpro_error' );
-				wp_redirect( pmpro_url( 'checkout' ) );
+				wp_safe_redirect( pmpro_url( 'checkout' ) );
 				exit;
 			}
 
@@ -813,10 +834,16 @@ class PMProGateway_Razorpay extends PMProGateway {
 			$razorpay_order = $api->create_order( $initial_amount_paise, $order->code, array( 'pmpro_order_id' => $order->id ) );
 
 			if ( is_wp_error( $razorpay_order ) ) {
-				$order->notes = trim( $order->notes . ' ' . sprintf( __( 'Error creating Razorpay order: %s', 'pmpro-razorpay' ), $razorpay_order->get_error_message() ) );
+				$order->notes = trim(
+					$order->notes . ' ' . sprintf(
+						/* translators: %s: Razorpay error message. */
+						__( 'Error creating Razorpay order: %s', 'pmpro-razorpay' ),
+						$razorpay_order->get_error_message()
+					)
+				);
 				$order->saveOrder();
 				pmpro_setMessage( $razorpay_order->get_error_message(), 'pmpro_error' );
-				wp_redirect( pmpro_url( 'checkout' ) );
+				wp_safe_redirect( pmpro_url( 'checkout' ) );
 				exit;
 			}
 
@@ -826,7 +853,7 @@ class PMProGateway_Razorpay extends PMProGateway {
 		$order->saveOrder();
 
 		// Redirect back to checkout so the embedded modal can render.
-		wp_redirect( pmpro_url( 'checkout', '?pmpro_level=' . $order->membership_id . '&pmpro_razorpay_order=' . $order->code ) );
+		wp_safe_redirect( pmpro_url( 'checkout', '?pmpro_level=' . $order->membership_id . '&pmpro_razorpay_order=' . $order->code ) );
 		exit;
 	}
 
@@ -902,7 +929,7 @@ class PMProGateway_Razorpay extends PMProGateway {
 
 		$config['callback_url'] = pmpro_url( 'confirmation', '?level=' . $morder->membership_id );
 
-		wp_enqueue_script( 'razorpay-checkout', 'https://checkout.razorpay.com/v1/checkout.js', array(), null, true );
+		wp_enqueue_script( 'razorpay-checkout', 'https://checkout.razorpay.com/v1/checkout.js', array(), PMPRO_RAZORPAY_VERSION, true );
 		wp_enqueue_script( 'pmpro-razorpay', plugins_url( 'js/pmpro-razorpay.js', PMPRO_RAZORPAY_DIR . '/pmpro-razorpay.php' ), array( 'razorpay-checkout' ), PMPRO_RAZORPAY_VERSION, true );
 
 		wp_localize_script( 'pmpro-razorpay', 'pmproRazorpay', $config );
@@ -925,7 +952,13 @@ class PMProGateway_Razorpay extends PMProGateway {
 		$result = $this->cancel_subscription_at_gateway( $order->subscription_transaction_id );
 
 		if ( ! $result ) {
-			$order->notes = trim( $order->notes . ' ' . sprintf( __( 'Error cancelling subscription %s at Razorpay.', 'pmpro-razorpay' ), $order->subscription_transaction_id ) );
+			$order->notes = trim(
+				$order->notes . ' ' . sprintf(
+					/* translators: %s: Razorpay subscription ID. */
+					__( 'Error cancelling subscription %s at Razorpay.', 'pmpro-razorpay' ),
+					$order->subscription_transaction_id
+				)
+			);
 			$order->saveOrder();
 		}
 
@@ -1013,25 +1046,23 @@ class PMProGateway_Razorpay extends PMProGateway {
 		}
 
 		if ( ! empty( $razorpay_subscription['charge_at'] ) ) {
-			$update_array['next_payment_date'] = date( 'Y-m-d H:i:s', (int) $razorpay_subscription['charge_at'] );
+			$update_array['next_payment_date'] = get_date_from_gmt( gmdate( 'Y-m-d H:i:s', (int) $razorpay_subscription['charge_at'] ), 'Y-m-d H:i:s' );
 		}
 
 		if ( ! empty( $razorpay_subscription['start_at'] ) ) {
-			$update_array['startdate'] = date( 'Y-m-d H:i:s', (int) $razorpay_subscription['start_at'] );
+			$update_array['startdate'] = get_date_from_gmt( gmdate( 'Y-m-d H:i:s', (int) $razorpay_subscription['start_at'] ), 'Y-m-d H:i:s' );
 		}
 
 		if ( ! empty( $razorpay_subscription['ended_at'] ) ) {
-			$update_array['enddate'] = date( 'Y-m-d H:i:s', (int) $razorpay_subscription['ended_at'] );
+			$update_array['enddate'] = get_date_from_gmt( gmdate( 'Y-m-d H:i:s', (int) $razorpay_subscription['ended_at'] ), 'Y-m-d H:i:s' );
 		}
 
-		if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG ) {
-			error_log( sprintf(
-				'[PMPro Razorpay] subscription_sync subscription=%s razorpay_status=%s pmpro_status=%s',
-				isset( $razorpay_subscription['id'] ) ? $razorpay_subscription['id'] : '',
-				isset( $razorpay_subscription['status'] ) ? $razorpay_subscription['status'] : '',
-				isset( $update_array['status'] ) ? $update_array['status'] : 'unchanged'
-			) );
-		}
+		PMProGateway_Razorpay_API::debug_log( sprintf(
+			'[PMPro Razorpay] subscription_sync subscription=%s razorpay_status=%s pmpro_status=%s',
+			isset( $razorpay_subscription['id'] ) ? $razorpay_subscription['id'] : '',
+			isset( $razorpay_subscription['status'] ) ? $razorpay_subscription['status'] : '',
+			isset( $update_array['status'] ) ? $update_array['status'] : 'unchanged'
+		) );
 
 		// Update subscription object
 		$subscription->set( $update_array );

@@ -1,22 +1,25 @@
-=== Paid Memberships Pro - Razorpay Gateway ===
+=== PMPro Razorpay ===
 Contributors: sayandey18
-Tags: paid memberships pro, payment gateway, razorpay, upi autopay
+Donate link: https://github.com/sayandey18
+Tags: paid memberships pro, razorpay, payment gateway, upi autopay, subscription
 Requires at least: 6.0
 Tested up to: 7.1
-Requires Plugins: paid-memberships-pro
 Stable tag: 1.0.0
+Requires PHP: 7.4
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Adds the ability to accept payments using the Razorpay Payment Gateway
+Adds the ability to accept payments using the Razorpay Payment Gateway on your Paid Memberships Pro membership site.
 
 == Description ==
 
 Adds Razorpay as a payment gateway to your list of accepted payment gateways. Razorpay supports one-time payments and recurring subscriptions via cards, UPI Autopay, and eMandates. International currencies are supported via cards; UPI Autopay and eMandates support INR only.
 
-This Add On requires the [Paid Memberships Pro](https://wordpress.org/plugins/paid-memberships-pro/) plugin.
+This Add On requires the [Paid Memberships Pro](https://github.com/strangerstudios/paid-memberships-pro) plugin.
 
 = Requirements =
 
-* [Paid Memberships Pro](https://wordpress.org/plugins/paid-memberships-pro/) (2.12.6 or higher)
+* [Paid Memberships Pro](https://github.com/strangerstudios/paid-memberships-pro) (2.12.6 or higher)
 
 [Read the full documentation for the Razorpay Gateway Add On](https://github.com/sayandey18/pmpro-razorpay)
 

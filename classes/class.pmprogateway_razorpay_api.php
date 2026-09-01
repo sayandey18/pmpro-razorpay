@@ -152,6 +152,19 @@ class PMProGateway_Razorpay_API {
 	}
 
 	/**
+	 * Log a debug message when Razorpay debugging is enabled.
+	 *
+	 * @param string $message The message to log.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public static function debug_log( $message ) {
+		if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG ) {
+			error_log( $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+	}
+
+	/**
 	 * Perform a request against the Razorpay API.
 	 *
 	 * @param string $method HTTP method ('POST', 'GET', etc).
@@ -208,15 +221,13 @@ class PMProGateway_Razorpay_API {
 				$error_data['razorpay_reason'] = $data['error']['reason'];
 			}
 
-			if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG ) {
-				error_log( sprintf(
-					'[PMPro Razorpay] API error %1$s %2$s: %3$s %4$s',
-					$method,
-					$path,
-					$response_code,
-					$body
-				) );
-			}
+			self::debug_log( sprintf(
+				'[PMPro Razorpay] API error %1$s %2$s: %3$s %4$s',
+				$method,
+				$path,
+				$response_code,
+				$body
+			) );
 
 			return new WP_Error( 'razorpay_api_error', $error_message, $error_data );
 		}

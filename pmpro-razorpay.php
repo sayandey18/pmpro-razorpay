@@ -9,12 +9,16 @@
  * Requires PHP: 7.4
  * Author: Sayan Dey
  * Author URI: https://github.com/sayandey18
- * License: GPL-3.0+
- * License URI: https://www.gnu.org/licenses/gpl-3.0.html
+ * License: GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: pmpro-razorpay
  * Domain Path: /languages
  * Requires Plugins: paid-memberships-pro
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 define( 'PMPRO_RAZORPAY_DIR', dirname( __FILE__ ) );
 define( 'PMPRO_RAZORPAY_VERSION', '1.0.0' );
@@ -61,7 +65,18 @@ function pmpro_razorpay_admin_notice() {
 	if ( get_transient( 'pmpro-razorpay-admin-notice' ) && class_exists( 'PMProGateway' ) ) {
 		?>
 		<div class="updated notice is-dismissible">
-			<p><?php printf( __( 'Thank you for activating the Paid Memberships Pro: Razorpay Add On. <a href="%s">Visit the payment settings page</a> to configure the Razorpay Payment Gateway.', 'pmpro-razorpay' ), esc_url( get_admin_url( null, 'admin.php?page=pmpro-paymentsettings' ) ) ); ?></p>
+			<p>
+			<?php
+			printf(
+				wp_kses(
+					/* translators: %s: URL to the PMPro payment settings page. */
+					__( 'Thank you for activating the Paid Memberships Pro: Razorpay Add On. <a href="%s">Visit the payment settings page</a> to configure the Razorpay Payment Gateway.', 'pmpro-razorpay' ),
+					array( 'a' => array( 'href' => array() ) )
+				),
+				esc_url( get_admin_url( null, 'admin.php?page=pmpro-paymentsettings' ) )
+			);
+			?>
+			</p>
 		</div>
 		<?php
 		// Delete transient, only display this notice once.
@@ -137,11 +152,3 @@ function pmpro_razorpay_plugin_row_meta( $links, $file ) {
 	return $links;
 }
 add_filter( 'plugin_row_meta', 'pmpro_razorpay_plugin_row_meta', 10, 2 );
-
-/**
- * Load the languages folder for translations.
- */
-function pmprzp_load_textdomain() {
-	load_plugin_textdomain( 'pmpro-razorpay' );
-}
-add_action( 'plugins_loaded', 'pmprzp_load_textdomain' );

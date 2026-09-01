@@ -8,122 +8,139 @@
  * @since 1.0.0
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Set this in your wp-config.php for debugging.
 // define( 'PMPRO_RAZORPAY_DEBUG', true );
 
-global $wpdb, $gateway_environment, $logstr;
+/**
+ * Process an incoming Razorpay webhook request.
+ *
+ * @since 1.0.0
+ */
+function pmpro_razorpay_process_webhook() {
+	global $pmpro_razorpay_logstr;
 
-$logstr = ''; // Will put debug info here and write to razorpay_webhook.txt.
+	$pmpro_razorpay_logstr = ''; // Will put debug info here and write to razorpay_webhook.txt.
 
-if ( ! function_exists( 'pmpro_getParam' ) ) {
-	return;
+	if ( ! function_exists( 'pmpro_getParam' ) ) {
+		return;
+	}
+
+	// Read the raw JSON body. Razorpay sends the event as raw JSON, not as $_POST.
+	$payload = file_get_contents( 'php://input' );
+
+	// Read the signature from the X-Razorpay-Signature header.
+	$signature = '';
+	if ( isset( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) ) {
+		$signature = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) );
+	}
+
+	// Get the configured webhook secrets (live and/or sandbox).
+	$secret         = get_option( 'pmpro_razorpay_webhook_secret' );
+	$sandbox_secret = get_option( 'pmpro_razorpay_sandbox_webhook_secret' );
+
+	if ( empty( $secret ) && empty( $sandbox_secret ) ) {
+		pmpro_razorpay_webhook_log( __( 'Razorpay webhook secret not configured.', 'pmpro-razorpay' ) );
+		pmpro_razorpay_Exit();
+	}
+
+	// Verify the webhook signature against any configured webhook secret
+	// (live or sandbox). Razorpay sends both environments to the same URL.
+	if ( false === $payload || empty( $signature ) || ! PMProGateway_Razorpay_API::verify_webhook_signature_any( $payload, $signature ) ) {
+		pmpro_razorpay_webhook_log( __( 'Razorpay webhook signature verification failed.', 'pmpro-razorpay' ) );
+		status_header( 400 );
+		pmpro_razorpay_Exit();
+	}
+
+	// Decode the event.
+	$event = json_decode( $payload, true );
+
+	if ( empty( $event ) || empty( $event['event'] ) ) {
+		pmpro_razorpay_webhook_log( __( 'Razorpay webhook contained no event data.', 'pmpro-razorpay' ) );
+		status_header( 400 );
+		pmpro_razorpay_Exit();
+	}
+
+	$event_type = sanitize_text_field( $event['event'] );
+
+	// Full reference of event types and responses:
+	// https://razorpay.com/docs/webhooks/
+	switch ( $event_type ) {
+
+		case 'subscription.authenticated':
+			pmpro_razorpay_handle_subscription_authenticated( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'subscription.activated':
+			pmpro_razorpay_handle_subscription_activated( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'subscription.charged':
+			pmpro_razorpay_handle_subscription_charged( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'subscription.charge.failed':
+		case 'payment.failed':
+			pmpro_razorpay_handle_payment_failed( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'subscription.cancelled':
+		case 'subscription.halted':
+		case 'subscription.completed':
+			$subscription    = pmpro_razorpay_get_entity( $event, 'subscription' );
+			$subscription_id = isset( $subscription['id'] ) ? sanitize_text_field( $subscription['id'] ) : '';
+
+			pmpro_razorpay_log_transition( '', $subscription_id, $event_type, '', '', '', 'cancellation', 'terminal subscription state' );
+			pmpro_razorpay_webhook_log( pmpro_handle_subscription_cancellation_at_gateway( $subscription_id, 'razorpay', get_option( 'pmpro_gateway_environment' ) ) );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'subscription.expired':
+		case 'subscription.paused':
+		case 'subscription.resumed':
+		case 'subscription.pending':
+			$subscription    = pmpro_razorpay_get_entity( $event, 'subscription' );
+			$subscription_id = isset( $subscription['id'] ) ? sanitize_text_field( $subscription['id'] ) : '';
+
+			pmpro_razorpay_webhook_log( sprintf(
+				/* translators: %1$s: Razorpay event type, %2$s: Razorpay subscription ID. */
+				__( 'Subscription %1$s for subscription # (%2$s). No PMPro state change.', 'pmpro-razorpay' ),
+				$event_type,
+				$subscription_id
+			) );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'payment.authorized':
+			pmpro_razorpay_handle_payment_authorized( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'refund.created':
+		case 'refund.processed':
+			pmpro_razorpay_handle_refund( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		case 'payment.captured':
+			pmpro_razorpay_handle_payment_captured( $event );
+			pmpro_razorpay_Exit();
+			break;
+
+		default:
+			do_action( 'pmpro_razorpay_other_webhook_events', $event_type, $event['payload'] );
+			pmpro_razorpay_Exit();
+			break;
+	}
 }
-
-// Read the raw JSON body. Razorpay sends the event as raw JSON, not as $_POST.
-$payload = file_get_contents( 'php://input' );
-
-// Read the signature from the X-Razorpay-Signature header.
-$signature = '';
-if ( isset( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) ) {
-	$signature = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) );
-}
-
-// Get the configured webhook secrets (live and/or sandbox).
-$secret = get_option( 'pmpro_razorpay_webhook_secret' );
-$sandbox_secret = get_option( 'pmpro_razorpay_sandbox_webhook_secret' );
-
-if ( empty( $secret ) && empty( $sandbox_secret ) ) {
-	pmpro_razorpay_webhook_log( __( 'Razorpay webhook secret not configured.', 'pmpro-razorpay' ) );
-	pmpro_razorpay_Exit();
-}
-
-// Verify the webhook signature against any configured webhook secret
-// (live or sandbox). Razorpay sends both environments to the same URL.
-if ( false === $payload || empty( $signature ) || ! PMProGateway_Razorpay_API::verify_webhook_signature_any( $payload, $signature ) ) {
-	pmpro_razorpay_webhook_log( __( 'Razorpay webhook signature verification failed.', 'pmpro-razorpay' ) );
-	status_header( 400 );
-	pmpro_razorpay_Exit();
-}
-
-// Decode the event.
-$event = json_decode( $payload, true );
-
-if ( empty( $event ) || empty( $event['event'] ) ) {
-	pmpro_razorpay_webhook_log( __( 'Razorpay webhook contained no event data.', 'pmpro-razorpay' ) );
-	status_header( 400 );
-	pmpro_razorpay_Exit();
-}
-
-$event_type = sanitize_text_field( $event['event'] );
-
-// Full reference of event types and responses:
-// https://razorpay.com/docs/webhooks/
-switch ( $event_type ) {
-
-	case 'subscription.authenticated':
-		pmpro_razorpay_handle_subscription_authenticated( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'subscription.activated':
-		pmpro_razorpay_handle_subscription_activated( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'subscription.charged':
-		pmpro_razorpay_handle_subscription_charged( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'subscription.charge.failed':
-	case 'payment.failed':
-		pmpro_razorpay_handle_payment_failed( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'subscription.cancelled':
-	case 'subscription.halted':
-	case 'subscription.completed':
-		$subscription    = pmpro_razorpay_get_entity( $event, 'subscription' );
-		$subscription_id = isset( $subscription['id'] ) ? sanitize_text_field( $subscription['id'] ) : '';
-
-		pmpro_razorpay_log_transition( '', $subscription_id, $event_type, '', '', '', 'cancellation', 'terminal subscription state' );
-		pmpro_razorpay_webhook_log( pmpro_handle_subscription_cancellation_at_gateway( $subscription_id, 'razorpay', get_option( 'pmpro_gateway_environment' ) ) );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'subscription.expired':
-	case 'subscription.paused':
-	case 'subscription.resumed':
-	case 'subscription.pending':
-		$subscription    = pmpro_razorpay_get_entity( $event, 'subscription' );
-		$subscription_id = isset( $subscription['id'] ) ? sanitize_text_field( $subscription['id'] ) : '';
-
-		pmpro_razorpay_webhook_log( sprintf( __( 'Subscription %1$s for subscription # (%2$s). No PMPro state change.', 'pmpro-razorpay' ), $event_type, $subscription_id ) );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'payment.authorized':
-		pmpro_razorpay_handle_payment_authorized( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'refund.created':
-	case 'refund.processed':
-		pmpro_razorpay_handle_refund( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	case 'payment.captured':
-		pmpro_razorpay_handle_payment_captured( $event );
-		pmpro_razorpay_Exit();
-		break;
-
-	default:
-		do_action( 'pmpro_razorpay_other_webhook_events', $event_type, $event['payload'] );
-		pmpro_razorpay_Exit();
-		break;
-}
+pmpro_razorpay_process_webhook();
 
 /**
  * Extract an entity from a Razorpay webhook payload.
@@ -216,7 +233,11 @@ function pmpro_razorpay_handle_subscription_authenticated( $event ) {
 	$morder = pmpro_razorpay_get_checkout_order( $subscription );
 
 	if ( empty( $morder->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the order for subscription # (%s).", 'pmpro-razorpay' ), $subscription_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay subscription ID. */
+			__( "Couldn't find the order for subscription # (%s).", 'pmpro-razorpay' ),
+			$subscription_id
+		) );
 		return;
 	}
 
@@ -261,7 +282,11 @@ function pmpro_razorpay_handle_subscription_activated( $event ) {
 	$morder = pmpro_razorpay_get_checkout_order( $subscription );
 
 	if ( empty( $morder->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the order for subscription # (%s).", 'pmpro-razorpay' ), $subscription_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay subscription ID. */
+			__( "Couldn't find the order for subscription # (%s).", 'pmpro-razorpay' ),
+			$subscription_id
+		) );
 		return;
 	}
 
@@ -373,6 +398,7 @@ function pmpro_razorpay_get_order_by_subscription( $subscription_id ) {
 function pmpro_razorpay_get_order_by_meta( $meta_key, $meta_value ) {
 	global $wpdb;
 
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared, indexed reverse meta lookup with no PMPro helper available.
 	$order_id = $wpdb->get_var(
 		$wpdb->prepare(
 			"SELECT pmpro_membership_order_id FROM {$wpdb->pmpro_membership_ordermeta} WHERE meta_key = %s AND meta_value = %s ORDER BY meta_id DESC LIMIT 1",
@@ -413,7 +439,11 @@ function pmpro_razorpay_handle_subscription_charged( $event ) {
 
 	// The payment must actually be captured before we treat it as money received.
 	if ( empty( $payment_id ) || 'captured' !== $payment_status ) {
-		pmpro_razorpay_webhook_log( sprintf( __( 'subscription.charged for subscription # (%1$s) did not carry a captured payment. Ignoring.', 'pmpro-razorpay' ), $subscription_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %1$s: Razorpay subscription ID. */
+			__( 'subscription.charged for subscription # (%1$s) did not carry a captured payment. Ignoring.', 'pmpro-razorpay' ),
+			$subscription_id
+		) );
 		return;
 	}
 
@@ -421,7 +451,11 @@ function pmpro_razorpay_handle_subscription_charged( $event ) {
 	$existing = new MemberOrder();
 	$existing->getMemberOrderByPaymentTransactionID( $payment_id );
 	if ( ! empty( $existing->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( 'An order with that payment ID (%s) already exists.', 'pmpro-razorpay' ), $payment_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay payment ID. */
+			__( 'An order with that payment ID (%s) already exists.', 'pmpro-razorpay' ),
+			$payment_id
+		) );
 		return;
 	}
 
@@ -429,7 +463,11 @@ function pmpro_razorpay_handle_subscription_charged( $event ) {
 	$morder = pmpro_razorpay_get_checkout_order( $subscription );
 
 	if ( empty( $morder->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the original subscription: (%s).", 'pmpro-razorpay' ), $subscription_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay subscription ID. */
+			__( "Couldn't find the original subscription: (%s).", 'pmpro-razorpay' ),
+			$subscription_id
+		) );
 		return;
 	}
 
@@ -482,7 +520,11 @@ function pmpro_razorpay_add_renewal( $subscription, $payment ) {
 	$morder = new MemberOrder();
 	$morder->getMemberOrderByPaymentTransactionID( $payment_id );
 	if ( ! empty( $morder->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( 'An order with that payment ID (%s) already exists.', 'pmpro-razorpay' ), $payment_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay payment ID. */
+			__( 'An order with that payment ID (%s) already exists.', 'pmpro-razorpay' ),
+			$payment_id
+		) );
 		return;
 	}
 
@@ -491,7 +533,11 @@ function pmpro_razorpay_add_renewal( $subscription, $payment ) {
 	$old_order->getLastMemberOrderBySubscriptionTransactionID( $subscription_id );
 
 	if ( empty( $old_order ) || empty( $old_order->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the original subscription: (%s).", 'pmpro-razorpay' ), $subscription_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay subscription ID. */
+			__( "Couldn't find the original subscription: (%s).", 'pmpro-razorpay' ),
+			$subscription_id
+		) );
 		return;
 	}
 
@@ -500,7 +546,11 @@ function pmpro_razorpay_add_renewal( $subscription, $payment ) {
 
 	// No user found for this order anymore.
 	if ( empty( $user ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the old order's user. Order ID (%s).", 'pmpro-razorpay' ), $old_order->id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: PMPro order ID. */
+			__( "Couldn't find the old order's user. Order ID (%s).", 'pmpro-razorpay' ),
+			$old_order->id
+		) );
 		return;
 	}
 
@@ -536,7 +586,12 @@ function pmpro_razorpay_add_renewal( $subscription, $payment ) {
 		$email = new PMProEmail();
 		$email->sendInvoiceEmail( $user, $order );
 
-		pmpro_razorpay_webhook_log( sprintf( __( 'Order created (%1$s) for subscription # (%2$s).', 'pmpro-razorpay' ), $order->id, $subscription_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %1$s: PMPro order ID, %2$s: Razorpay subscription ID. */
+			__( 'Order created (%1$s) for subscription # (%2$s).', 'pmpro-razorpay' ),
+			$order->id,
+			$subscription_id
+		) );
 
 		do_action( 'pmpro_subscription_payment_completed', $order, $payment );
 	}
@@ -577,7 +632,11 @@ function pmpro_razorpay_handle_payment_failed( $event ) {
 	$user    = get_userdata( $user_id );
 
 	if ( empty( $user ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the old order's user. Order ID (%s).", 'pmpro-razorpay' ), $old_order->id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: PMPro order ID. */
+			__( "Couldn't find the old order's user. Order ID (%s).", 'pmpro-razorpay' ),
+			$old_order->id
+		) );
 		return;
 	}
 
@@ -599,6 +658,7 @@ function pmpro_razorpay_handle_payment_failed( $event ) {
 	$order->timestamp                   = time();
 
 	if ( ! empty( $reason ) ) {
+		/* translators: %s: Razorpay failure reason. */
 		$order->notes = sprintf( __( 'Payment failed: %s.', 'pmpro-razorpay' ), $reason );
 	} else {
 		$order->notes = __( 'Payment failed.', 'pmpro-razorpay' );
@@ -614,7 +674,11 @@ function pmpro_razorpay_handle_payment_failed( $event ) {
 	$pmproemail = new PMProEmail();
 	$pmproemail->sendBillingFailureAdminEmail( get_bloginfo( 'admin_email' ), $order );
 
-	pmpro_razorpay_webhook_log( sprintf( __( 'Payment failed for subscription # (%s).', 'pmpro-razorpay' ), $subscription_id ) );
+	pmpro_razorpay_webhook_log( sprintf(
+		/* translators: %s: Razorpay subscription ID. */
+		__( 'Payment failed for subscription # (%s).', 'pmpro-razorpay' ),
+		$subscription_id
+	) );
 }
 
 /**
@@ -638,7 +702,11 @@ function pmpro_razorpay_handle_refund( $event ) {
 	$order->getMemberOrderByPaymentTransactionID( $payment_id );
 
 	if ( empty( $order->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find an order with payment id (%s) to refund.", 'pmpro-razorpay' ), $payment_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay payment ID. */
+			__( "Couldn't find an order with payment id (%s) to refund.", 'pmpro-razorpay' ),
+			$payment_id
+		) );
 		return;
 	}
 
@@ -649,11 +717,22 @@ function pmpro_razorpay_handle_refund( $event ) {
 	if ( $refund_total >= floatval( $order->total ) ) {
 		$order->status = 'refunded';
 		$order->saveOrder();
-		pmpro_razorpay_webhook_log( sprintf( __( 'Order # (%1$s) marked refunded for payment (%2$s).', 'pmpro-razorpay' ), $order->id, $payment_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %1$s: PMPro order ID, %2$s: Razorpay payment ID. */
+			__( 'Order # (%1$s) marked refunded for payment (%2$s).', 'pmpro-razorpay' ),
+			$order->id,
+			$payment_id
+		) );
 	} else {
+		/* translators: %1$s: Refund amount, %2$s: Razorpay payment ID. */
 		$order->notes = trim( $order->notes . ' ' . sprintf( __( 'Partial refund of %1$s processed for payment (%2$s).', 'pmpro-razorpay' ), $refund_total, $payment_id ) );
 		$order->saveOrder();
-		pmpro_razorpay_webhook_log( sprintf( __( 'Partial refund of %1$s added as a note to order # (%2$s).', 'pmpro-razorpay' ), $refund_total, $order->id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %1$s: Refund amount, %2$s: PMPro order ID. */
+			__( 'Partial refund of %1$s added as a note to order # (%2$s).', 'pmpro-razorpay' ),
+			$refund_total,
+			$order->id
+		) );
 	}
 }
 
@@ -677,7 +756,12 @@ function pmpro_razorpay_handle_payment_captured( $event ) {
 
 	// Defensive: this is a payment.captured event, but only act on captured payments.
 	if ( 'captured' !== $payment_status ) {
-		pmpro_razorpay_webhook_log( sprintf( __( 'payment.captured for payment (%1$s) has status %2$s. Ignoring.', 'pmpro-razorpay' ), $payment_id, $payment_status ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %1$s: Razorpay payment ID, %2$s: Razorpay payment status. */
+			__( 'payment.captured for payment (%1$s) has status %2$s. Ignoring.', 'pmpro-razorpay' ),
+			$payment_id,
+			$payment_status
+		) );
 		return;
 	}
 
@@ -685,7 +769,11 @@ function pmpro_razorpay_handle_payment_captured( $event ) {
 	$existing = new MemberOrder();
 	$existing->getMemberOrderByPaymentTransactionID( $payment_id );
 	if ( ! empty( $existing->id ) ) {
-		pmpro_razorpay_webhook_log( sprintf( __( 'An order with that payment ID (%s) already exists.', 'pmpro-razorpay' ), $payment_id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: Razorpay payment ID. */
+			__( 'An order with that payment ID (%s) already exists.', 'pmpro-razorpay' ),
+			$payment_id
+		) );
 		return;
 	}
 
@@ -696,7 +784,11 @@ function pmpro_razorpay_handle_payment_captured( $event ) {
 		$morder          = pmpro_razorpay_get_order_by_subscription( $subscription_id );
 
 		if ( empty( $morder->id ) ) {
-			pmpro_razorpay_webhook_log( sprintf( __( "Couldn't find the order for subscription payment (%s).", 'pmpro-razorpay' ), $payment_id ) );
+			pmpro_razorpay_webhook_log( sprintf(
+				/* translators: %s: Razorpay payment ID. */
+				__( "Couldn't find the order for subscription payment (%s).", 'pmpro-razorpay' ),
+				$payment_id
+			) );
 			return;
 		}
 
@@ -739,7 +831,11 @@ function pmpro_razorpay_handle_payment_captured( $event ) {
 	}
 
 	if ( 'success' === $morder->status ) {
-		pmpro_razorpay_webhook_log( sprintf( __( 'Order # (%s) is already complete.', 'pmpro-razorpay' ), $morder->id ) );
+		pmpro_razorpay_webhook_log( sprintf(
+			/* translators: %s: PMPro order ID. */
+			__( 'Order # (%s) is already complete.', 'pmpro-razorpay' ),
+			$morder->id
+		) );
 		return;
 	}
 
@@ -761,8 +857,8 @@ function pmpro_razorpay_handle_payment_captured( $event ) {
  * @since 1.0.0
  */
 function pmpro_razorpay_webhook_log( $s ) {
-	global $logstr;
-	$logstr .= "\t" . $s . "\n";
+	global $pmpro_razorpay_logstr;
+	$pmpro_razorpay_logstr .= "\t" . $s . "\n";
 }
 
 /**
@@ -773,16 +869,26 @@ function pmpro_razorpay_webhook_log( $s ) {
  * @since 1.0.0
  */
 function pmpro_razorpay_Exit( $redirect = false ) {
-	global $logstr;
-	$logstr = sprintf( __( 'Logged On: %s', 'pmpro-razorpay' ), date_i18n( 'm/d/Y H:i:s' ) ) . "\n" . $logstr . "\n-------------\n";
+	global $pmpro_razorpay_logstr;
+	$pmpro_razorpay_logstr = sprintf(
+		/* translators: %s: Date/time the webhook was logged. */
+		__( 'Logged On: %s', 'pmpro-razorpay' ),
+		date_i18n( 'm/d/Y H:i:s' )
+	) . "\n" . $pmpro_razorpay_logstr . "\n-------------\n";
 
 	// Log in file or email?
 	if ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && PMPRO_RAZORPAY_DEBUG === 'log' ) {
 		// File.
-		$loghandle = fopen( PMPRO_RAZORPAY_DIR . '/logs/razorpay_webhook.txt', 'a+' );
-		if ( $loghandle ) {
-			fwrite( $loghandle, $logstr );
-			fclose( $loghandle );
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+
+		if ( ! empty( $wp_filesystem ) ) {
+			$log_path = PMPRO_RAZORPAY_DIR . '/logs/razorpay_webhook.txt';
+			$existing = $wp_filesystem->exists( $log_path ) ? $wp_filesystem->get_contents( $log_path ) : '';
+			$wp_filesystem->put_contents( $log_path, $existing . $pmpro_razorpay_logstr, FS_CHMOD_FILE );
 		}
 	} elseif ( defined( 'PMPRO_RAZORPAY_DEBUG' ) && false !== PMPRO_RAZORPAY_DEBUG ) {
 		// Email.
@@ -792,11 +898,11 @@ function pmpro_razorpay_Exit( $redirect = false ) {
 			$log_email = get_option( 'admin_email' );
 		}
 
-		wp_mail( $log_email, get_option( 'blogname' ) . ' ' . __( 'Razorpay Webhook Log', 'pmpro-razorpay' ), nl2br( $logstr ) );
+		wp_mail( $log_email, get_option( 'blogname' ) . ' ' . __( 'Razorpay Webhook Log', 'pmpro-razorpay' ), nl2br( $pmpro_razorpay_logstr ) );
 	}
 
 	if ( ! empty( $redirect ) ) {
-		wp_redirect( $redirect );
+		wp_safe_redirect( $redirect );
 	}
 
 	exit;
