@@ -42,6 +42,10 @@ Please post it in the GitHub issue tracker here: https://github.com/sayandey18/p
 = I need help installing, configuring, or customizing the plugin. =
 
 == Changelog ==
+= 1.0.1 =
+* ENHANCEMENT: Added a "Show Billing Address Fields in PMPro Checkout Form" setting to hide billing address fields on the checkout page.
+* ENHANCEMENT: Added an option to remove all Razorpay data (API keys and secrets) when the plugin is deleted.
+
 = 1.0.0 =
 * Initial Release
 * ENHANCEMENT: Added Razorpay as a payment gateway supporting one-time payments and recurring subscriptions via cards and UPI Autopay.

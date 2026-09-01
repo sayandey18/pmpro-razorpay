@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Paid Memberships Pro - Razorpay Gateway
+ * Plugin Name: PMPro Razorpay
  * Plugin URI: https://www.paidmembershipspro.com/add-ons/razorpay
  * Description: PMPro Gateway integration for Razorpay
  * Version: 1.0.0

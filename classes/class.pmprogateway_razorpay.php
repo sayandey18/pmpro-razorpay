@@ -42,6 +42,7 @@ class PMProGateway_Razorpay extends PMProGateway {
 
 			add_filter( 'pmpro_include_payment_information_fields', '__return_false' );
 			add_filter( 'pmpro_required_billing_fields', array( 'PMProGateway_Razorpay', 'pmpro_required_billing_fields' ) );
+			add_filter( 'pmpro_include_billing_address_fields', array( 'PMProGateway_Razorpay', 'pmpro_include_billing_address_fields' ) );
 			add_filter( 'pmpro_checkout_default_submit_button', array( 'PMProGateway_Razorpay', 'pmpro_checkout_default_submit_button' ) );
 		}
 
@@ -91,6 +92,7 @@ class PMProGateway_Razorpay extends PMProGateway {
 			'razorpay_sandbox_key_id',
 			'razorpay_sandbox_key_secret',
 			'razorpay_sandbox_webhook_secret',
+			'razorpay_show_billing_address',
 			'currency',
 			'use_ssl',
 			'tax_state',
@@ -214,6 +216,42 @@ class PMProGateway_Razorpay extends PMProGateway {
 				</table>
 			</div>
 		</div>
+
+		<div id="pmpro_razorpay_settings" class="pmpro_section" data-visibility="shown" data-activated="true">
+			<div class="pmpro_section_toggle">
+				<button class="pmpro_section-toggle-button" type="button" aria-expanded="true">
+					<span class="dashicons dashicons-arrow-up-alt2"></span>
+					<?php esc_html_e( 'Razorpay Settings', 'pmpro-razorpay' ); ?>
+				</button>
+			</div>
+			<div class="pmpro_section_inside">
+				<table class='form-table'>
+					<tbody>
+						<tr class="gateway gateway_razorpay">
+							<th scope="row" valign="top">
+								<label for="razorpay_show_billing_address"><?php esc_html_e( 'Show Billing Address Fields in PMPro Checkout Form', 'pmpro-razorpay' ); ?></label>
+							</th>
+							<td>
+								<select id="razorpay_show_billing_address" name="razorpay_show_billing_address">
+									<option value="Yes" <?php selected( get_option( 'pmpro_razorpay_show_billing_address', 'Yes' ), 'Yes' ); ?>><?php esc_html_e( 'Yes', 'pmpro-razorpay' ); ?></option>
+									<option value="No" <?php selected( get_option( 'pmpro_razorpay_show_billing_address', 'Yes' ), 'No' ); ?>><?php esc_html_e( 'No', 'pmpro-razorpay' ); ?></option>
+								</select>
+								<p class="description"><?php esc_html_e( "Razorpay doesn't require billing address fields. Choose 'No' to hide them on the checkout page.", 'pmpro-razorpay' ); ?></p>
+							</td>
+						</tr>
+						<tr class="gateway gateway_razorpay">
+							<th scope="row" valign="top">
+								<label for="razorpay_delete_data_on_uninstall"><?php esc_html_e( 'Remove data on uninstall', 'pmpro-razorpay' ); ?></label>
+							</th>
+							<td>
+								<input type="checkbox" id="razorpay_delete_data_on_uninstall" name="razorpay_delete_data_on_uninstall" value="1" <?php checked( get_option( 'pmpro_razorpay_delete_data_on_uninstall', false ) ); ?> />
+								<p class="description"><?php esc_html_e( 'When enabled, all Razorpay API keys and secrets will be permanently removed when the plugin is deleted.', 'pmpro-razorpay' ); ?></p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 		<?php
 	}
 
@@ -271,7 +309,8 @@ class PMProGateway_Razorpay extends PMProGateway {
 			'razorpay_webhook_secret',
 			'razorpay_sandbox_key_id',
 			'razorpay_sandbox_key_secret',
-			'razorpay_sandbox_webhook_secret'
+			'razorpay_sandbox_webhook_secret',
+			'razorpay_show_billing_address'
 		);
 
 		foreach ( $settings_to_save as $setting ) {
@@ -279,6 +318,8 @@ class PMProGateway_Razorpay extends PMProGateway {
 				update_option( 'pmpro_' . $setting, sanitize_text_field( wp_unslash( $_REQUEST[ $setting ] ) ) );
 			}
 		}
+
+		update_option( 'pmpro_razorpay_delete_data_on_uninstall', isset( $_REQUEST['razorpay_delete_data_on_uninstall'] ) );
 	}
 
 	/**
@@ -380,6 +421,19 @@ class PMProGateway_Razorpay extends PMProGateway {
 			<p><?php esc_html_e( 'To fully integrate with Razorpay, be sure to use the following for your Webhook URL', 'pmpro-razorpay' ); ?> <pre><?php echo esc_url( admin_url("admin-ajax.php") . "?action=razorpay-webhook"); ?></pre></p>
 		</td>
 	</tr>
+
+	<tr class="gateway gateway_razorpay" <?php if ( $gateway != "razorpay" ) { ?>style="display: none;"<?php } ?>>
+		<th scope="row" valign="top">
+			<label for="razorpay_show_billing_address"><?php esc_html_e( 'Show Billing Address Fields in PMPro Checkout Form', 'pmpro-razorpay' ); ?></label>
+		</th>
+		<td>
+			<select id="razorpay_show_billing_address" name="razorpay_show_billing_address">
+				<option value="Yes" <?php if ( 'No' !== $values['razorpay_show_billing_address'] ) { ?>selected="selected"<?php } ?>><?php esc_html_e( 'Yes', 'pmpro-razorpay' ); ?></option>
+				<option value="No" <?php if ( 'No' === $values['razorpay_show_billing_address'] ) { ?>selected="selected"<?php } ?>><?php esc_html_e( 'No', 'pmpro-razorpay' ); ?></option>
+			</select>
+			<br /><small><?php esc_html_e( "Razorpay doesn't require billing address fields. Choose 'No' to hide them on the checkout page.", 'pmpro-razorpay' ); ?></small>
+		</td>
+	</tr>
 	<?php
 	}
 
@@ -396,7 +450,33 @@ class PMProGateway_Razorpay extends PMProGateway {
 		unset($fields['ExpirationYear']);
 		unset($fields['CVV']);
 
+		if ( 'No' === get_option( 'pmpro_razorpay_show_billing_address', 'Yes' ) ) {
+			unset( $fields['bfirstname'] );
+			unset( $fields['blastname'] );
+			unset( $fields['baddress1'] );
+			unset( $fields['bcity'] );
+			unset( $fields['bstate'] );
+			unset( $fields['bzipcode'] );
+			unset( $fields['bphone'] );
+			unset( $fields['bcountry'] );
+		}
+
 		return $fields;
+	}
+
+	/**
+	 * Check settings if billing address should be shown.
+	 *
+	 * @param bool $include Whether to include billing address fields.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	public static function pmpro_include_billing_address_fields( $include ) {
+		if ( 'No' === get_option( 'pmpro_razorpay_show_billing_address', 'Yes' ) ) {
+			$include = false;
+		}
+
+		return $include;
 	}
 
 	/**
