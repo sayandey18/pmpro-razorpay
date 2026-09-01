@@ -13,7 +13,6 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: pmpro-razorpay
  * Domain Path: /languages
- * Requires Plugins: paid-memberships-pro
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

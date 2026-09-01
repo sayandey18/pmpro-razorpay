@@ -1,6 +1,8 @@
-# [Paid Memberships Pro - Razorpay Gateway](https://www.paidmembershipspro.com/add-ons/razorpay/) #
+![Paid Memberships Pro - Razorpay Gateway](https://raw.githubusercontent.com/sayandey18/pmpro-razorpay/refs/heads/master/.wordpress-org/banner-1544x500.jpg)
 
-![License](https://img.shields.io/badge/license-GPL--3.0%2B-red.svg?style=flat-square)
+# [Paid Memberships Pro - Razorpay Gateway](https://github.com/sayandey18/pmpro-razorpay) #
+
+[![License](https://img.shields.io/badge/license-GPL--2.0%2B-red.svg?style=flat-square)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
 
 ### Welcome to the Paid Memberships Pro - Razorpay Gateway GitHub Repository
 Adds Razorpay as a payment gateway to your list of accepted payment gateways. Razorpay supports one-time payments and recurring subscriptions via cards, UPI Autopay, and eMandates. International currencies are supported via cards; UPI Autopay and eMandates support INR only.
